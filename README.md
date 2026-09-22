@@ -1,108 +1,135 @@
-# 🐜 Hexapod Tripod Gait (Arduino)
+# Hexapod Tripod Gait Robot
 
-A bio-inspired six-legged (hexapod) robot designed to mimic ant locomotion using a simple, stable **tripod gait**.  
-This project demonstrates efficient walking using only **6 servos** (1 DOF per leg) and **passive mechanical knees** with forward stops.
+A six-legged, ant-inspired robot developed around an alternating tripod gait, passive lower-leg mechanisms, and six servo-driven actuated joints. The project combines concept selection, Inventor CAD, preliminary actuator sizing, Arduino firmware, fabrication, and a physical walking demonstration.
 
----
+**Tools:** Autodesk Inventor, Arduino C++, `Servo.h`, MDF fabrication
 
-## ⚙️ Overview
+## Project Overview
 
-- **Controller:** Arduino Uno  
-- **Servos:** 6 × Hitec HS-425BB  
-- **Material:** 1/4″ MDF body and legs  
-- **Degrees of Freedom:** 1 per leg (hip rotation only)  
-- **Knee Joints:** Passive with mechanical stops (~±7.5°)  
-- **Walking Modes:** Forward and backward (automatic direction reversal supported)  
-- **Gait:** Tripod gait for smooth, stable locomotion  
-- **Power:** 6 V battery pack (low & centered for stability)
-- **Speed:** 1.3 body lengths/s (0.24 m/s)
+| **Feature**            | **Specification / Detail**                           | **Evidence Class**  |
+| :--------------------- | :--------------------------------------------------- | :------------------ |
+| **Architecture**       | 6-legged hexapod with tripod gait                    | Designed            |
+| **Microcontroller**    | Arduino Uno                                          | Physical Prototype  |
+| **Actuators**          | 6 × Hitec HS-425BB standard servos                   | Physical Prototype  |
+| **Chassis Material**   | 1/4″ (6.35 mm) MDF                                   | Physical Prototype  |
+| **Degrees of Freedom** | 6 total (1 actuated DOF per leg)                     | Designed            |
+| **Knee Joints**        | Passive mechanical stops (~7.5°) with elastic assist | Designed / Physical |
+| **Walking Speed**      | Not measured in this repository                       | Unverified          |
+| **Power Supply**       | 6 V battery pack                                     | Physical Prototype  |
 
----
+The robot uses six legs arranged into two alternating tripod groups. Each leg features one servo-driven shoulder joint paired with a passive lower-leg mechanism. During stance, a mechanical stop makes the lower leg act as a rigid support member. During swing, the lower linkage folds forward to reduce toe dragging before returning via elastic assist.
 
-## 🦿 Motion Summary
+### Concept Selection
 
-| Feature | Description |
-|----------|-------------|
-| **Tripod A** | Left Front (LF), Right Middle (RM), Left Rear (LR) |
-| **Tripod B** | Right Front (RF), Left Middle (LM), Right Rear (RR) |
-| **Swing Phase** | Tripod lifts and moves forward relative to body |
-| **Stance Phase** | Opposite tripod pushes body forward |
-| **Smooth Interpolation** | Servos move in small increments for natural motion |
-| **Forward/Backward Walking** | Controlled by sign of motion direction |
+The hexapod design was selected over an inchworm-inspired alternative based on preliminary design trade-offs:
 
----
+* **Static Stability:** Provides a three-point support polygon during each tripod phase without requiring active balancing.
+* **Mechanical Simplicity:** Uses single-DOF active joints with passive compliant knees to reduce mechanical and control complexity.
 
-## 🔩 Mechanical Design
+## Mechanical Design & Fabrication
 
-- Upper leg length: ~60 mm  
-- Lower leg length: ~50 mm  
-- Legs offset 26 mm from body centerline  
-- Mechanical stops limit knee motion:
-  - **Forward Stop:** ~7.5° forward of vertical 
-- Elastic assist to lift lower leg during swing  
-- Rubber feet with rounded toe to prevent catching  
+The physical robot is constructed from 1/4″ (6.35 mm) MDF for the main chassis, upper legs, and lower legs, with six Hitec HS-425BB servos controlled by an Arduino Uno.
 
----
+* **Leg Geometry:** Upper leg length: ~60 mm | Lower leg length: 40 mm
+* **Body Offset:** Legs offset 26 mm from chassis centerline
+* **Knee Joints:** Passive mechanical stops limiting forward rotation to ~7.5°, with elastic return assist
+* **Traction:** Rubber toe grips
 
-## 🧰 Electronics & Connections
+## Engineering Sizing & Analysis
 
-| Component | Connection |
-|------------|-------------|
-| Servos | Pins 2–7 (LF→RR order) |
-| Power | 6 V Li-ion/NiMH battery |
-| Ground | Common ground for Arduino + servos |
-| Optional | IR sensor for direction reversal trigger |
+The preliminary design calculations evaluated the static torque demands on the shoulder servos under simplified load conditions.
 
-**Servo Pin Assignments:**
-| Servo | Pin |
-|-------|-----|
-| LF | 2 |
-| LM | 3 |
-| LR | 4 |
-| RF | 5 |
-| RM | 6 |
-| RR | 7 |
+| **Parameter**                    | **Value**               | **Evidence Class**  | **Notes / Source**                                     |
+| :------------------------------- | :---------------------- | :------------------ | :----------------------------------------------------- |
+| **Calculated Robot Mass**        | 0.69 kg                 | Calculated          | Sum of chassis, servos, battery, and leg components    |
+| **Total Weight ($W$)**           | 6.77 N                  | Calculated          | Derived from $0.69\text{ kg} \times 9.81\text{ m/s}^2$ |
+| **Assumed Leg Load ($F_{leg}$)** | 3.38 N                  | Assumed             | Load assumption used in original sizing calculation    |
+| **Required Torque ($T_{req}$)**  | 0.203 N·m (2.07 kgf·cm) | Calculated          | Static moment arm check at 60 mm                       |
+| **Servo Stall Torque**           | 4.10 kgf·cm             | Specified           | Hitec HS-425BB datasheet rating at 6 V                 |
+| **Static Factor of Safety**      | ~1.98                   | Preliminary theoretical calculation | Ratio of rated/stall torque to required static torque under the documented simplified load assumption |
+| **Walking Speed**                | 0.24 m/s (1.3 BL/s)     | Reported benchmark  | Instructor-evaluated physical benchmark                |
 
----
+> **Analysis Note:** Equal static load sharing across an ideal 3-leg tripod stance yields ~2.26 N per leg ($6.77\text{ N}/3$). The 3.38 N value was retained from the original sizing calculation as the documented design load assumption. The ~1.98 factor of safety is therefore a preliminary/theoretical static calculation based on that assumption and the servo's rated/stall torque; it is not an experimentally validated operating margin. These calculations do not model dynamic acceleration, joint friction, or voltage drop under load.
 
-## 💻 Code Summary
+## Control System & Firmware
 
-**Language:** Arduino C++  
-**Libraries:**  
-- `Servo.h`
+The control software is implemented in Arduino C++ using the standard `Servo.h` library.
 
-**Main features:**
-- Tripod gait control  
-- Smooth motion interpolation  
-- Direction toggle for forward/backward walking  
-- Adjustable step duration and stride length  
+### Servo Pin Assignment
 
-### Key Parameters
-| Variable | Description | Default |
-|-----------|-------------|----------|
-| `swingMax` | Max forward swing angle | 20° |
-| `swingMin` | Max backward swing angle | -20° |
-| `stepDelay` | Time per half-step | 800 ms |
-| `smoothSteps` | Steps for interpolation | 20 |
-| `direction` | 1 = forward |
+| **Servo Leg Position** | **Arduino Pin** | **Neutral Position** | **Target Stance Angle** |
+| :--------------------- | :-------------- | :------------------- | :---------------------- |
+| **Left Front (LF)**    | Pin 2           | 90°                  | 70°                     |
+| **Left Middle (LM)**   | Pin 4           | 90°                  | 110°                    |
+| **Left Rear (LR)**     | Pin 7           | 90°                  | 68°                     |
+| **Right Front (RF)**   | Pin 8           | 90°                  | 70°                     |
+| **Right Middle (RM)**  | Pin 10          | 90°                  | 110°                    |
+| **Right Rear (RR)**    | Pin 12          | 90°                  | 67°                     |
 
----
+### Gait Execution
 
-## 🔧 Fabrication Checklist
+1. **Startup:** Attaches all six servos and smoothly transitions from 90° neutral to the initial gait position over 1000 ms.
+2. **Stance Hold:** Holds the initial position for 7000 ms.
+3. **Tripod Gait:** Alternates between two tripod groups:
 
-1. Cut body and legs from MDF; drill servo holes and spacers.  
-2. Add mechanical knee stops at ±7.5°; make adjustable.  
-3. Mount 6 servos with shoulder screws (no glue).  
-4. Install electronics low and centered.  
-5. Wire all servos to Arduino (pins 2–7).  
-6. Calibrate all servos to 90° neutral before attaching horns.  
-7. Run `hexapod_tripod_gait.ino` and test each leg individually.  
+   * **Tripod A:** LF, RM, LR
+   * **Tripod B:** RF, LM, RR
+4. **Smooth Interpolation:** Uses 25 sub-steps over a nominal 225 ms phase to coordinate servo motion.
 
----
+The current control system is **open-loop** and does not use position feedback or closed-loop gait control.
 
-## 🧪 Testing Procedure
+## Physical Prototype & Media
 
-1. **Single Leg Test:** Sweep one servo slowly and confirm stops engage correctly.  
-2. **Tripod Dry Run:** Test small amplitude (±10°) to verify gait timing.  
-3. **Forward Walk:** Walk forward 5 m, fine-tune step size if dragging occurs.
-5. **Full Test:** Run 5 m forward + 5 m backward with tuned stride. 
+The physical robot was fabricated, wired, and tested as a walking prototype.
+
+* [Front Profile View](Media/hexapod_front.jpg)
+* [Rear Profile View](Media/hexapod_rear.jpg)
+* [Chassis & Servo Layout](Media/hexapod_body.jpg)
+* [Arduino & Power Wiring](Media/hexapod_wiring.jpg)
+* [Walking Video Demonstration](Media/hexapod_walking_demo.mp4)
+
+## Documentation & CAD
+
+* [Arduino Firmware](Code/hexapod_controller.ino)
+* [Engineering / Design Analysis](Documentation/hexapod_design_analysis.pdf)
+* [Mechanical Drawings](Documentation/hexapod_engineering_drawings.pdf)
+* [Inventor Assembly](CAD/hexapod_assembly.iam)
+* [Inventor Presentation](CAD/hexapod_presentation.ipn)
+* [Inventor Parts](CAD/CAD%20Parts/)
+
+## Limitations & Future Work
+
+* **Open-Loop Control:** No ground-contact, IMU, or position feedback is currently implemented.
+* **Dynamic Torque Modeling:** The actuator sizing uses a simplified static moment-arm calculation and does not model dynamic leg loading.
+* **Gait Optimization:** Stride amplitude and timing are currently fixed firmware parameters.
+* **Quantitative Testing:** The repository does not include an independently documented walking-speed measurement, distance testing, physical mass measurement, or servo calibration data. The 0.24 m/s value in the analysis table is an instructor-evaluated benchmark reported by the project documentation.
+* **Firmware Notes:** The gait uses fixed angle, timing, and interpolation parameters; no feedback or automatic gait adaptation is implemented.
+
+## Repository Structure
+
+```text
+Hexapod-Robot/
+├── README.md
+├── .gitignore
+├── Code/
+│   └── hexapod_controller.ino
+├── CAD/
+│   ├── hexapod_assembly.iam
+│   ├── hexapod_presentation.ipn
+│   ├── CAD Parts/
+│   └── OldVersions/
+├── Documentation/
+│   ├── hexapod_design_analysis.pdf
+│   └── hexapod_engineering_drawings.pdf
+└── Media/
+    ├── hexapod_front.jpg
+    ├── hexapod_rear.jpg
+    ├── hexapod_body.jpg
+    ├── hexapod_wiring.jpg
+    └── hexapod_walking_demo.mp4
+```
+
+
+## Tools & Skills
+
+**Autodesk Inventor · Arduino C++ · Servo Control · Tripod Gait · Mechanism Design · Actuator Sizing · Static Torque Analysis · CAD · MDF Fabrication · Physical Prototyping**

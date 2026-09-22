@@ -1,0 +1,18 @@
+# Arduino build and editor artifacts
+*.elf
+*.hex
+*.eep
+*.map
+*.lss
+*.o
+.vscode/
+
+# Autodesk Inventor lock and recovery files
+*.lck
+*.bak
+*.old
+~$*
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
